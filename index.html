@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🐾 囤糧追蹤器</title>
+
+<!-- Google OAuth -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<style>
+  /* ===== CSS 變數 / 狸貓小熊貓配色 ===== */
+  :root {
+    --cream:    #FFF8F0;
+    --peach:    #FFCBA4;
+    --tanuki:   #C47C3E;
+    --warm-brown:#8B5230;
+    --red-panda:#E05C2A;
+    --tail-stripe:#F4A04A;
+    --dark:     #3E2310;
+    --green:    #7DB87A;
+    --green-dark:#4E8A4B;
+    --red:      #D94F3D;
+    --white:    #FFFDF9;
+    --shadow:   rgba(62,35,16,0.13);
+    --radius:   18px;
+    --radius-sm:10px;
+    --font-title:'Nunito', 'Noto Sans TC', sans-serif;
+    --font-body: 'Noto Sans TC', 'Nunito', sans-serif;
+  }
+
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--cream);
+    color: var(--dark);
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 10% 20%, #FFE5CC88 0%, transparent 40%),
+      radial-gradient(circle at 90% 80%, #FFD4AA66 0%, transparent 40%);
+  }
+
+  /* ===== 通用 ===== */
+  .page { display: none; min-height: 100vh; }
+  .page.active { display: flex; flex-direction: column; }
+
+  h1 {
+    font-family: var(--font-title);
+    font-weight: 900;
+    color: var(--warm-brown);
+  }
+
+  /* ===== 頂部導覽列 ===== */
+  .navbar {
+    background: var(--warm-brown);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 3px 12px var(--shadow);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .navbar-brand {
+    font-family: var(--font-title);
+    font-weight: 900;
+    font-size: 1.3rem;
+    color: var(--cream);
+    display: flex; align-items: center; gap: 8px;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .navbar-user {
+    display: flex; align-items: center; gap: 10px;
+    color: var(--peach);
+    font-size: 0.9rem;
+  }
+  .navbar-user img {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--peach);
+  }
+  .btn-logout {
+    background: transparent;
+    border: 1.5px solid var(--peach);
+    color: var(--peach);
+    padding: 4px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-family: var(--font-body);
+    transition: all 0.2s;
+  }
+  .btn-logout:hover { background: var(--peach); color: var(--warm-brown); }
+
+  /* ===== 主內容區 ===== */
+  .main-content {
+    flex: 1;
+    padding: 24px 20px;
+    max-width: 720px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* ===== 按鈕 ===== */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    border-radius: 30px;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-title);
+    font-weight: 700;
+    font-size: 1rem;
+    transition: transform 0.15s, box-shadow 0.15s, background 0.2s;
+  }
+  .btn:active { transform: scale(0.96); }
+
+  .btn-primary {
+    background: var(--red-panda);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(224,92,42,0.35);
+  }
+  .btn-primary:hover {
+    background: #c94e20;
+    box-shadow: 0 6px 18px rgba(224,92,42,0.45);
+    transform: translateY(-2px);
+  }
+
+  .btn-success {
+    background: var(--green);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(125,184,122,0.35);
+  }
+  .btn-success:hover { background: var(--green-dark); transform: translateY(-2px); }
+
+  .btn-danger {
+    background: var(--red);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(217,79,61,0.3);
+  }
+  .btn-danger:hover { background: #bf3b2a; transform: translateY(-2px); }
+
+  .btn-secondary {
+    background: var(--peach);
+    color: var(--warm-brown);
+    box-shadow: 0 4px 10px var(--shadow);
+  }
+  .btn-secondary:hover { background: #ffbf8a; transform: translateY(-2px); }
+
+  .btn-outline {
+    background: transparent;
+    border: 2px solid var(--tanuki);
+    color: var(--tanuki);
+  }
+  .btn-outline:hover { background: var(--tanuki); color: #fff; }
+
+  /* ===== 登入頁 ===== */
+  #page-login {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    min-height: 100vh;
+  }
+  .login-card {
+    background: var(--white);
+    border-radius: 28px;
+    padding: 52px 44px;
+    box-shadow: 0 12px 48px var(--shadow);
+    max-width: 420px;
+    width: 90%;
+    position: relative;
+    overflow: hidden;
+  }
+  .login-card::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 160px; height: 160px;
+    background: radial-gradient(circle, #FFD4AA88, transparent 70%);
+    border-radius: 50%;
+  }
+  .login-mascot {
+    font-size: 6rem;
+    line-height: 1;
+    margin-bottom: 16px;
+    display: block;
+    animation: bounce 2s ease-in-out infinite;
+  }
+  @keyframes bounce {
+    0%,100% { transform: translateY(0); }
+    50%      { transform: translateY(-10px); }
+  }
+  .login-card h1 { font-size: 2rem; margin-bottom: 8px; }
+  .login-card p  { color: var(--tanuki); margin-bottom: 32px; font-size: 1rem; }
+  .btn-google {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+    border: 2px solid var(--peach);
+    padding: 12px 28px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-family: var(--font-title);
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--warm-brown);
+    box-shadow: 0 4px 16px var(--shadow);
+    transition: all 0.2s;
+  }
+  .btn-google:hover {
+    background: var(--peach);
+    box-shadow: 0 6px 20px var(--shadow);
+    transform: translateY(-2px);
+  }
+  .btn-google svg { width: 22px; height: 22px; }
+
+  /* ===== 首頁 ===== */
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .page-header h1 { font-size: 1.6rem; }
+
+  .stock-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .stock-item {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 3px 14px var(--shadow);
+    border-left: 5px solid var(--tail-stripe);
+    transition: transform 0.2s, box-shadow 0.2s;
+    animation: slideIn 0.3s ease both;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .stock-item:hover { transform: translateY(-2px); box-shadow: 0 6px 20px var(--shadow); }
+  .stock-item.expiring-soon { border-left-color: var(--red); }
+  .stock-item.expiring-soon .exp-badge { background: #fde8e6; color: var(--red); }
+
+  .stock-icon { font-size: 2rem; flex-shrink: 0; }
+
+  .stock-info { flex: 1; min-width: 0; }
+  .stock-name {
+    font-family: var(--font-title);
+    font-weight: 800;
+    font-size: 1.05rem;
+    color: var(--warm-brown);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .stock-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 5px;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  .amount-badge { background: #FFF0E0; color: var(--tanuki); }
+  .exp-badge    { background: #FFF0E0; color: var(--tanuki); }
+  .notes-badge  { background: #EEF5EE; color: var(--green-dark); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .btn-eat {
+    flex-shrink: 0;
+    background: var(--red-panda);
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-family: var(--font-title);
+    font-weight: 700;
+    font-size: 0.88rem;
+    transition: all 0.2s;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .btn-eat:hover { background: #c94e20; transform: scale(1.05); }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--tanuki);
+  }
+  .empty-state .empty-icon { font-size: 5rem; display: block; margin-bottom: 12px; }
+  .empty-state p { font-size: 1.1rem; }
+
+  .loading-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--tanuki);
+  }
+  .spinner {
+    width: 48px; height: 48px;
+    border: 5px solid var(--peach);
+    border-top-color: var(--red-panda);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ===== 新增頁 ===== */
+  .form-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 28px 28px;
+    box-shadow: 0 6px 28px var(--shadow);
+  }
+  .form-card h2 {
+    font-family: var(--font-title);
+    font-weight: 900;
+    color: var(--warm-brown);
+    margin-bottom: 22px;
+    font-size: 1.35rem;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .form-group { margin-bottom: 18px; }
+  .form-group label {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--warm-brown);
+    font-size: 0.92rem;
+  }
+  .form-group label .required { color: var(--red-panda); margin-left: 2px; }
+
+  .form-control {
+    width: 100%;
+    padding: 10px 14px;
+    border: 2px solid var(--peach);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 0.97rem;
+    color: var(--dark);
+    background: var(--cream);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+  .form-control:focus {
+    border-color: var(--tanuki);
+    box-shadow: 0 0 0 3px rgba(196,124,62,0.15);
+  }
+  .form-control:disabled {
+    background: #F5EDE3;
+    color: var(--tanuki);
+    cursor: not-allowed;
+  }
+  textarea.form-control { resize: vertical; }
+  select.form-control { cursor: pointer; }
+
+  .amount-row { display: flex; gap: 10px; align-items: flex-start; }
+  .amount-row select { flex: 1; }
+  #amount-custom-wrap { flex: 1; display: none; }
+
+  /* 日曆 */
+  .datepicker-wrap { position: relative; }
+  .datepicker-wrap input { cursor: pointer; }
+  .calendar-popup {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    background: var(--white);
+    border: 2px solid var(--peach);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 28px var(--shadow);
+    z-index: 200;
+    padding: 14px;
+    min-width: 280px;
+    animation: popIn 0.18s ease;
+  }
+  @keyframes popIn {
+    from { opacity:0; transform: scale(0.95) translateY(-4px); }
+    to   { opacity:1; transform: scale(1)    translateY(0); }
+  }
+  .calendar-popup.open { display: block; }
+
+  .cal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .cal-header span {
+    font-family: var(--font-title);
+    font-weight: 800;
+    color: var(--warm-brown);
+    font-size: 1rem;
+  }
+  .cal-nav {
+    background: none; border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+    color: var(--tanuki);
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: background 0.15s;
+  }
+  .cal-nav:hover { background: var(--peach); }
+
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+  }
+  .cal-day-name {
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--tanuki);
+    padding: 4px 0;
+  }
+  .cal-day {
+    text-align: center;
+    padding: 6px 2px;
+    font-size: 0.85rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    color: var(--dark);
+  }
+  .cal-day:hover { background: var(--peach); }
+  .cal-day.empty { cursor: default; }
+  .cal-day.today { font-weight: 800; color: var(--red-panda); }
+  .cal-day.selected { background: var(--red-panda); color: #fff; font-weight: 700; }
+  .cal-day.selected:hover { background: #c94e20; }
+
+  /* 按鈕列 */
+  .form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+
+  /* ===== Modal ===== */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(62,35,16,0.45);
+    z-index: 300;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.2s;
+  }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+  .modal-overlay.open { display: flex; }
+
+  .modal-box {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 32px 36px;
+    max-width: 380px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 16px 48px rgba(62,35,16,0.25);
+    animation: popIn 0.2s ease;
+  }
+  .modal-icon { font-size: 3.5rem; display: block; margin-bottom: 10px; }
+  .modal-box h3 {
+    font-family: var(--font-title);
+    font-weight: 800;
+    color: var(--warm-brown);
+    margin-bottom: 8px;
+    font-size: 1.3rem;
+  }
+  .modal-box p {
+    color: var(--tanuki);
+    margin-bottom: 22px;
+    font-size: 0.97rem;
+    line-height: 1.5;
+  }
+  .modal-actions { display: flex; gap: 12px; justify-content: center; }
+
+  /* ===== Toast ===== */
+  .toast-container {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    z-index: 999;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .toast {
+    background: var(--warm-brown);
+    color: var(--cream);
+    padding: 12px 20px;
+    border-radius: 14px;
+    font-weight: 600;
+    font-size: 0.92rem;
+    box-shadow: 0 4px 16px var(--shadow);
+    animation: slideUp 0.3s ease;
+    display: flex; align-items: center; gap: 8px;
+  }
+  @keyframes slideUp {
+    from { opacity:0; transform: translateY(16px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+  .toast.success { background: var(--green-dark); }
+  .toast.error   { background: var(--red); }
+
+  /* ===== 裝飾 ===== */
+  .paw { font-style: normal; }
+
+  /* ===== 響應式 ===== */
+  @media (max-width: 480px) {
+    .main-content { padding: 16px 14px; }
+    .form-card { padding: 20px 16px; }
+    .login-card { padding: 40px 24px; }
+    .modal-box { padding: 24px 20px; }
+    .modal-actions { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== 登入頁 ===== -->
+<div id="page-login" class="page active">
+  <div class="login-card">
+    <span class="login-mascot">🦝</span>
+    <h1>囤糧追蹤器</h1>
+    <p>登入後開始管理你的食物庫存！</p>
+    <button class="btn-google" onclick="handleGoogleLogin()">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+      登入 Google 帳號
+    </button>
+  </div>
+</div>
+
+<!-- ===== 首頁 ===== -->
+<div id="page-home" class="page">
+  <nav class="navbar">
+    <span class="navbar-brand" onclick="showPage('home')">🐾 囤糧追蹤器</span>
+    <div class="navbar-user">
+      <img id="user-avatar" src="" alt="avatar" onerror="this.style.display='none'">
+      <span id="user-name-display"></span>
+      <button class="btn-logout" onclick="handleLogout()">登出</button>
+    </div>
+  </nav>
+  <div class="main-content">
+    <div class="page-header">
+      <h1>🏠 目前庫存</h1>
+      <button class="btn btn-primary" onclick="showPage('add')">
+        <span class="paw">🐾</span> 新增囤糧
+      </button>
+    </div>
+    <div id="stock-list-container">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>正在讀取庫存資料…</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 新增頁 ===== -->
+<div id="page-add" class="page">
+  <nav class="navbar">
+    <span class="navbar-brand" onclick="showPage('home')">🐾 囤糧追蹤器</span>
+    <div class="navbar-user">
+      <img id="user-avatar-add" src="" alt="avatar" onerror="this.style.display='none'">
+      <span id="user-name-add"></span>
+    </div>
+  </nav>
+  <div class="main-content">
+    <div class="form-card">
+      <h2>📦 新增囤糧項目</h2>
+
+      <!-- 罐罐名稱 -->
+      <div class="form-group">
+        <label>🏷️ 罐罐名稱 <span class="required">*</span></label>
+        <input type="text" id="f-item-name" class="form-control" placeholder="例如：鮪魚罐頭、泡麵…">
+      </div>
+
+      <!-- 庫存 -->
+      <div class="form-group">
+        <label>📦 庫存數量 <span class="required">*</span></label>
+        <div class="amount-row">
+          <select id="f-amount-select" class="form-control" onchange="handleAmountChange()">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+            <option value="custom">✏️ 自行填寫</option>
+          </select>
+          <div id="amount-custom-wrap">
+            <input type="number" id="f-amount-custom" class="form-control" placeholder="請輸入數量" min="1">
+          </div>
+        </div>
+      </div>
+
+      <!-- 到期日 -->
+      <div class="form-group">
+        <label>📅 到期日 <span class="required">*</span></label>
+        <div class="datepicker-wrap">
+          <input type="text" id="f-exp-date" class="form-control" placeholder="點擊選取日期" readonly>
+          <div class="calendar-popup" id="cal-popup">
+            <div class="cal-header">
+              <button class="cal-nav" onclick="calNav(-1)">◀</button>
+              <span id="cal-title"></span>
+              <button class="cal-nav" onclick="calNav(1)">▶</button>
+            </div>
+            <div class="cal-grid" id="cal-grid"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 附註 -->
+      <div class="form-group">
+        <label>📝 附註</label>
+        <textarea id="f-notes" class="form-control" rows="3" placeholder="可空白不填寫…"></textarea>
+      </div>
+
+      <!-- 建立者 -->
+      <div class="form-group">
+        <label>👤 建立者</label>
+        <input type="text" id="f-creator" class="form-control" disabled>
+      </div>
+
+      <!-- 建立時間 -->
+      <div class="form-group">
+        <label>🕐 建立時間</label>
+        <input type="text" id="f-create-date" class="form-control" disabled>
+      </div>
+
+      <!-- 按鈕 -->
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="confirmCreate()">
+          <span class="paw">🐾</span> 新增囤糧
+        </button>
+        <button class="btn btn-secondary" onclick="showPage('home')">
+          <span class="paw">🐾</span> 回首頁
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal：吃掉確認 ===== -->
+<div class="modal-overlay" id="modal-eat">
+  <div class="modal-box">
+    <span class="modal-icon">😋</span>
+    <h3>要吃掉它嗎？</h3>
+    <p id="modal-eat-text">確定要將此項目標記為已吃掉嗎？</p>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="confirmEat()">
+        <span class="paw">🐾</span> 是的，吃掉！
+      </button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-eat')">
+        <span class="paw">🐾</span> 否，我再想想
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal：新增確認 ===== -->
+<div class="modal-overlay" id="modal-create">
+  <div class="modal-box">
+    <span class="modal-icon">📦</span>
+    <h3>確認新增囤糧？</h3>
+    <p>確定要將這筆資料新增至庫存嗎？</p>
+    <div class="modal-actions">
+      <button class="btn btn-success" onclick="doCreate()">
+        <span class="paw">🐾</span> 確定新增
+      </button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-create')">
+        <span class="paw">🐾</span> 我再想想
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Toast 容器 ===== -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+/* ============================================================
+   ★ 設定區：請填入您的 Google Client ID 與 試算表 ID
+   ============================================================ */
+const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com'; // ← 替換此處
+const SPREADSHEET_ID   = '1fbsvGUrWKveG42DK-V3D2Guoc61EhXkbedprmpXSTZg';     // ← 已從您的網址取得
+const SHEET_NAME       = '罐罐追蹤表';
+
+// Sheets API Scopes
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
+
+/* ============================================================
+   全域狀態
+   ============================================================ */
+let currentUser   = null;  // { name, email, picture, accessToken }
+let tokenClient   = null;
+let eatTargetRow  = null;  // 要吃掉的那列 (row index in sheet, 1-based)
+let eatTargetName = '';
+
+/* ============================================================
+   頁面切換
+   ============================================================ */
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (name === 'home')  loadStockList();
+  if (name === 'add')   initAddForm();
+}
+
+/* ============================================================
+   Google OAuth
+   ============================================================ */
+window.onload = function() {
+  // 嘗試從 sessionStorage 還原登入狀態
+  const saved = sessionStorage.getItem('tanuki_user');
+  if (saved) {
+    currentUser = JSON.parse(saved);
+    afterLogin();
+  }
+};
+
+function handleGoogleLogin() {
+  // 使用 Google Identity Services
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: SCOPES + ' https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
+    callback: async (tokenResponse) => {
+      if (tokenResponse.error) {
+        showToast('登入失敗：' + tokenResponse.error, 'error');
+        return;
+      }
+      // 取得使用者資訊
+      try {
+        const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: 'Bearer ' + tokenResponse.access_token }
+        });
+        const info = await res.json();
+        currentUser = {
+          name: info.name,
+          email: info.email,
+          picture: info.picture,
+          accessToken: tokenResponse.access_token
+        };
+        sessionStorage.setItem('tanuki_user', JSON.stringify(currentUser));
+        afterLogin();
+      } catch(e) {
+        showToast('取得使用者資訊失敗', 'error');
+      }
+    }
+  });
+  tokenClient.requestAccessToken();
+}
+
+function afterLogin() {
+  // 更新 UI
+  ['', '-add'].forEach(suffix => {
+    const avatar = document.getElementById('user-avatar' + suffix);
+    const name   = document.getElementById('user-name' + (suffix === '' ? '-display' : suffix));
+    if (avatar) { avatar.src = currentUser.picture || ''; avatar.style.display = 'inline-block'; }
+    if (name)   name.textContent = currentUser.name;
+  });
+  showPage('home');
+}
+
+function handleLogout() {
+  currentUser = null;
+  sessionStorage.removeItem('tanuki_user');
+  google.accounts.oauth2.revoke && google.accounts.oauth2.revoke(currentUser?.accessToken, () => {});
+  showPage('login');
+}
+
+/* ============================================================
+   Google Sheets API 輔助
+   ============================================================ */
+async function sheetsGet(range) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(range)}`;
+  const res = await fetch(url, {
+    headers: { Authorization: 'Bearer ' + currentUser.accessToken }
+  });
+  if (!res.ok) throw new Error('讀取試算表失敗：' + res.status);
+  return res.json();
+}
+
+async function sheetsAppend(values) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(SHEET_NAME)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + currentUser.accessToken,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ values })
+  });
+  if (!res.ok) throw new Error('新增資料失敗：' + res.status);
+  return res.json();
+}
+
+async function sheetsUpdate(range, values) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=RAW`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      Authorization: 'Bearer ' + currentUser.accessToken,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ values })
+  });
+  if (!res.ok) throw new Error('更新資料失敗：' + res.status);
+  return res.json();
+}
+
+/* ============================================================
+   工具函式
+   ============================================================ */
+function nowDatetime() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function daysUntil(dateStr) {
+  if (!dateStr) return Infinity;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const exp   = new Date(dateStr);
+  return Math.ceil((exp - today) / 86400000);
+}
+
+function expLabel(dateStr) {
+  const d = daysUntil(dateStr);
+  if (d < 0)  return '⚠️ 已過期';
+  if (d === 0) return '⚠️ 今天到期';
+  if (d <= 7)  return `⚠️ ${d} 天後到期`;
+  return `📅 ${dateStr}`;
+}
+
+/* ============================================================
+   首頁：讀取庫存列表
+   ============================================================ */
+async function loadStockList() {
+  if (!currentUser) return;
+  const container = document.getElementById('stock-list-container');
+  container.innerHTML = `<div class="loading-state"><div class="spinner"></div><p>正在讀取庫存資料…</p></div>`;
+
+  try {
+    const data = await sheetsGet(`${SHEET_NAME}!A:H`);
+    const rows = data.values || [];
+
+    // 第一列為標題列，跳過
+    const items = [];
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const eat_date = r[7] || '';
+      if (eat_date.trim() !== '') continue; // 已吃掉的不顯示
+
+      items.push({
+        rowIndex: i + 1, // 1-based (sheet row)
+        id:          r[0] || '',
+        item_name:   r[1] || '',
+        amount:      r[2] || '',
+        exp_date:    r[3] || '',
+        notes:       r[4] || '',
+        creator:     r[5] || '',
+        create_date: r[6] || '',
+      });
+    }
+
+    // 依到期日排序（愈早愈上面，空值排最後）
+    items.sort((a, b) => {
+      if (!a.exp_date && !b.exp_date) return 0;
+      if (!a.exp_date) return 1;
+      if (!b.exp_date) return -1;
+      return new Date(a.exp_date) - new Date(b.exp_date);
+    });
+
+    if (items.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <span class="empty-icon">🦝</span>
+          <p>庫存是空的，快去囤糧吧！</p>
+        </div>`;
+      return;
+    }
+
+    const icons = ['🥫','🍜','🍱','🍪','🥪','🍫','🥩','🥦','🍎','🧃'];
+
+    const html = `<div class="stock-list">` + items.map((item, idx) => {
+      const expiring = daysUntil(item.exp_date) <= 7;
+      const icon = icons[idx % icons.length];
+      return `
+        <div class="stock-item ${expiring ? 'expiring-soon' : ''}">
+          <span class="stock-icon">${icon}</span>
+          <div class="stock-info">
+            <div class="stock-name">${escHtml(item.item_name)}</div>
+            <div class="stock-meta">
+              <span class="badge amount-badge">📦 數量：${escHtml(item.amount)}</span>
+              <span class="badge exp-badge">${expLabel(item.exp_date)}</span>
+              ${item.notes ? `<span class="badge notes-badge" title="${escHtml(item.notes)}">📝 ${escHtml(item.notes)}</span>` : ''}
+            </div>
+          </div>
+          <button class="btn-eat" onclick="openEatModal(${item.rowIndex}, '${escHtml(item.item_name).replace(/'/g,"\\'")}')">
+            😋 吃掉
+          </button>
+        </div>`;
+    }).join('') + `</div>`;
+
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = `<div class="empty-state"><span class="empty-icon">😵</span><p>讀取失敗：${e.message}</p></div>`;
+  }
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ============================================================
+   吃掉功能
+   ============================================================ */
+function openEatModal(rowIndex, itemName) {
+  eatTargetRow  = rowIndex;
+  eatTargetName = itemName;
+  document.getElementById('modal-eat-text').textContent = `確定要將「${itemName}」標記為已吃掉嗎？`;
+  openModal('modal-eat');
+}
+
+async function confirmEat() {
+  closeModal('modal-eat');
+  const dt = nowDatetime();
+  // eat_date 在第 H 欄 (index 8)
+  const range = `${SHEET_NAME}!H${eatTargetRow}`;
+  try {
+    await sheetsUpdate(range, [[dt]]);
+    showToast(`😋 ${eatTargetName} 已吃掉！`, 'success');
+    loadStockList();
+  } catch(e) {
+    showToast('更新失敗：' + e.message, 'error');
+  }
+}
+
+/* ============================================================
+   新增頁
+   ============================================================ */
+function initAddForm() {
+  if (!currentUser) { showPage('login'); return; }
+  document.getElementById('f-creator').value     = currentUser.name;
+  document.getElementById('f-create-date').value = nowDatetime();
+}
+
+function handleAmountChange() {
+  const sel  = document.getElementById('f-amount-select');
+  const wrap = document.getElementById('amount-custom-wrap');
+  wrap.style.display = sel.value === 'custom' ? 'block' : 'none';
+}
+
+function confirmCreate() {
+  const name = document.getElementById('f-item-name').value.trim();
+  const sel  = document.getElementById('f-amount-select');
+  const amount = sel.value === 'custom'
+    ? document.getElementById('f-amount-custom').value.trim()
+    : sel.value;
+  const exp = document.getElementById('f-exp-date').value.trim();
+
+  if (!name)   { showToast('請填寫罐罐名稱！', 'error'); return; }
+  if (!amount) { showToast('請填寫庫存數量！', 'error'); return; }
+  if (!exp)    { showToast('請選取到期日！', 'error'); return; }
+
+  openModal('modal-create');
+}
+
+async function doCreate() {
+  closeModal('modal-create');
+
+  // 先讀取目前最大 id
+  let nextId = 1;
+  try {
+    const data = await sheetsGet(`${SHEET_NAME}!A:A`);
+    const rows = data.values || [];
+    if (rows.length > 1) {
+      const ids = rows.slice(1).map(r => parseInt(r[0]) || 0);
+      nextId = Math.max(...ids) + 1;
+    }
+  } catch(e) { /* 無法讀取就從 1 開始 */ }
+
+  const sel    = document.getElementById('f-amount-select');
+  const amount = sel.value === 'custom'
+    ? document.getElementById('f-amount-custom').value.trim()
+    : sel.value;
+
+  const row = [
+    nextId,
+    document.getElementById('f-item-name').value.trim(),
+    amount,
+    document.getElementById('f-exp-date').value.trim(),
+    document.getElementById('f-notes').value.trim(),
+    currentUser.name,
+    document.getElementById('f-create-date').value,
+    ''  // eat_date 空白
+  ];
+
+  try {
+    await sheetsAppend([row]);
+    showToast('✅ 囤糧新增成功！', 'success');
+    // 清除表單
+    document.getElementById('f-item-name').value = '';
+    document.getElementById('f-amount-select').value = '1';
+    document.getElementById('amount-custom-wrap').style.display = 'none';
+    document.getElementById('f-exp-date').value = '';
+    calSelectedDate = null;
+    document.getElementById('f-notes').value = '';
+    document.getElementById('f-create-date').value = nowDatetime();
+    showPage('home');
+  } catch(e) {
+    showToast('新增失敗：' + e.message, 'error');
+  }
+}
+
+/* ============================================================
+   日曆元件
+   ============================================================ */
+let calYear, calMonth, calSelectedDate = null;
+
+document.getElementById('f-exp-date').addEventListener('click', function(e) {
+  e.stopPropagation();
+  const popup = document.getElementById('cal-popup');
+  if (popup.classList.contains('open')) { popup.classList.remove('open'); return; }
+  const now = calSelectedDate ? new Date(calSelectedDate + 'T00:00:00') : new Date();
+  calYear  = now.getFullYear();
+  calMonth = now.getMonth();
+  renderCal();
+  popup.classList.add('open');
+});
+
+document.addEventListener('click', function(e) {
+  const popup = document.getElementById('cal-popup');
+  if (!popup.contains(e.target) && e.target.id !== 'f-exp-date') {
+    popup.classList.remove('open');
+  }
+});
+
+function calNav(dir) {
+  calMonth += dir;
+  if (calMonth < 0)  { calMonth = 11; calYear--; }
+  if (calMonth > 11) { calMonth = 0;  calYear++; }
+  renderCal();
+}
+
+function renderCal() {
+  const title = document.getElementById('cal-title');
+  title.textContent = `${calYear} 年 ${calMonth + 1} 月`;
+  const grid  = document.getElementById('cal-grid');
+  const days  = ['日','一','二','三','四','五','六'];
+  let html = days.map(d => `<div class="cal-day-name">${d}</div>`).join('');
+
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const lastDate = new Date(calYear, calMonth + 1, 0).getDate();
+  const today    = new Date(); today.setHours(0,0,0,0);
+
+  for (let i = 0; i < firstDay; i++) html += `<div class="cal-day empty"></div>`;
+  for (let d = 1; d <= lastDate; d++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = new Date(dateStr+'T00:00:00').getTime() === today.getTime();
+    const isSel   = dateStr === calSelectedDate;
+    html += `<div class="cal-day ${isToday?'today':''} ${isSel?'selected':''}" onclick="selectCalDay('${dateStr}')">${d}</div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function selectCalDay(dateStr) {
+  calSelectedDate = dateStr;
+  document.getElementById('f-exp-date').value = dateStr;
+  document.getElementById('cal-popup').classList.remove('open');
+}
+
+/* ============================================================
+   Modal 控制
+   ============================================================ */
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// 點擊 overlay 關閉
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) overlay.classList.remove('open');
+  });
+});
+
+/* ============================================================
+   Toast
+   ============================================================ */
+function showToast(msg, type = '') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.4s'; }, 2800);
+  setTimeout(() => toast.remove(), 3200);
+}
+</script>
+</body>
+</html>
