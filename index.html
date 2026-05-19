@@ -811,14 +811,16 @@ async function sheetsGet(range) {
 }
 
 async function sheetsAppend(values) {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(SHEET_NAME)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
+  // 強制將每個值轉為字串，避免數字欄位（如 amount）被 API 誤解為列數
+  const safeValues = values.map(row => row.map(cell => (cell === null || cell === undefined) ? '' : String(cell)));
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(SHEET_NAME)}:append?valueInputOption=RAW&insertDataOption=OVERWRITE`;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       Authorization: 'Bearer ' + currentUser.accessToken,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ values })
+    body: JSON.stringify({ values: safeValues })
   });
   if (!res.ok) throw new Error('新增資料失敗：' + res.status);
   return res.json();
