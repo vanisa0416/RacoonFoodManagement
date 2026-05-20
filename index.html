@@ -721,10 +721,11 @@ const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
 /* ============================================================
    全域狀態
    ============================================================ */
-let currentUser   = null;  // { name, email, picture, accessToken }
-let tokenClient   = null;
-let eatTargetRow  = null;  // 要吃掉的那列 (row index in sheet, 1-based)
-let eatTargetName = '';
+let currentUser     = null;  // { name, email, picture, accessToken }
+let tokenClient     = null;
+let eatTargetRow    = null;  // 要吃掉的那列 (row index in sheet, 1-based)
+let eatTargetName   = '';
+let eatTargetAmount = 0;     // 目前庫存數量
 
 /* ============================================================
    頁面切換
@@ -858,10 +859,10 @@ function daysUntil(dateStr) {
 
 function expLabel(dateStr) {
   const d = daysUntil(dateStr);
-  if (d < 0)  return '⚠️ 已過期';
-  if (d === 0) return '⚠️ 今天到期';
-  if (d <= 7)  return `⚠️ ${d} 天後到期`;
-  return `📅 ${dateStr}`;
+  if (d < 0)   return '⚠️ 有效期限：已過期';
+  if (d === 0)  return '⚠️ 有效期限：今天到期';
+  if (d <= 7)   return `⚠️ 有效期限：${dateStr}（剩 ${d} 天）`;
+  return `📅 有效期限：${dateStr}`;
 }
 
 /* ============================================================
@@ -925,10 +926,10 @@ async function loadStockList() {
             <div class="stock-meta">
               <span class="badge amount-badge">📦 數量：${escHtml(item.amount)}</span>
               <span class="badge exp-badge">${expLabel(item.exp_date)}</span>
-              ${item.notes ? `<span class="badge notes-badge" title="${escHtml(item.notes)}">📝 ${escHtml(item.notes)}</span>` : ''}
+              ${item.notes ? `<span class="badge notes-badge" title="${escHtml(item.notes)}">📝 附註：${escHtml(item.notes.replace(/\n/g,' '))}</span>` : ''}
             </div>
           </div>
-          <button class="btn-eat" onclick="openEatModal(${item.rowIndex}, '${escHtml(item.item_name).replace(/'/g,"\\'")}')">
+          <button class="btn-eat" onclick="openEatModal(${item.rowIndex}, '${escHtml(item.item_name).replace(/'/g,"\\'")}', ${item.amount})">
             😋 吃掉
           </button>
         </div>`;
@@ -947,21 +948,35 @@ function escHtml(str) {
 /* ============================================================
    吃掉功能
    ============================================================ */
-function openEatModal(rowIndex, itemName) {
-  eatTargetRow  = rowIndex;
-  eatTargetName = itemName;
-  document.getElementById('modal-eat-text').textContent = `確定要將「${itemName}」標記為已吃掉嗎？`;
+function openEatModal(rowIndex, itemName, amount) {
+  eatTargetRow    = rowIndex;
+  eatTargetName   = itemName;
+  eatTargetAmount = parseInt(amount) || 0;
+  const msg = eatTargetAmount > 1
+    ? `「${itemName}」目前庫存 ${eatTargetAmount} 個，吃掉一個後剩 ${eatTargetAmount - 1} 個。`
+    : `「${itemName}」庫存只剩 1 個，吃掉後將標記為已用完。`;
+  document.getElementById('modal-eat-text').textContent = msg;
   openModal('modal-eat');
 }
 
 async function confirmEat() {
   closeModal('modal-eat');
-  const dt = nowDatetime();
-  // eat_date 在第 H 欄 (index 8)
-  const range = `${SHEET_NAME}!H${eatTargetRow}`;
   try {
-    await sheetsUpdate(range, [[dt]]);
-    showToast(`😋 ${eatTargetName} 已吃掉！`, 'success');
+    if (eatTargetAmount > 1) {
+      // 庫存 > 1：amount 減 1，不寫 eat_date
+      const newAmount = String(eatTargetAmount - 1);
+      const rangeAmt  = `${SHEET_NAME}!C${eatTargetRow}`;
+      await sheetsUpdate(rangeAmt, [[newAmount]]);
+      showToast(`😋 ${eatTargetName} 吃掉一個，剩餘 ${newAmount} 個！`, 'success');
+    } else {
+      // 庫存 = 1：amount 歸 0，同時寫入 eat_date
+      const dt = nowDatetime();
+      const rangeAmt  = `${SHEET_NAME}!C${eatTargetRow}`;
+      const rangeEat  = `${SHEET_NAME}!H${eatTargetRow}`;
+      await sheetsUpdate(rangeAmt, [['0']]);
+      await sheetsUpdate(rangeEat, [[dt]]);
+      showToast(`✅ ${eatTargetName} 全部吃完，已標記為用完！`, 'success');
+    }
     loadStockList();
   } catch(e) {
     showToast('更新失敗：' + e.message, 'error');
